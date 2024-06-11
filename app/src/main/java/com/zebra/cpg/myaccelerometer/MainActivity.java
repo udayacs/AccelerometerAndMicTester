@@ -34,6 +34,7 @@ public class MainActivity extends AppCompatActivity  implements SensorEventListe
     TextView tvy;
     private Button accStart;
     private Button accStop;
+    private boolean smListnerRegistered = false;
 
     private MediaRecorder recorder;
     private Button recStart;
@@ -57,20 +58,25 @@ public class MainActivity extends AppCompatActivity  implements SensorEventListe
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 
         if(accelerometer == null){
-            finish();
+            //finish();
             Toast.makeText(this, "Accelerometer is null", Toast.LENGTH_LONG).show();
         }
-
-        tvx = findViewById(R.id.tvx);
-        tvy = findViewById(R.id.tvy);
-        accStart = findViewById(R.id.btnStartAcc);
-        accStart.setOnClickListener(view -> {
-            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
-        });
-        accStop = findViewById(R.id.btnStopAcc);
-        accStop.setOnClickListener(view -> {
-            sensorManager.unregisterListener(this);
-        });
+        else {
+            tvx = findViewById(R.id.tvx);
+            tvy = findViewById(R.id.tvy);
+            accStart = findViewById(R.id.btnStartAcc);
+            accStart.setOnClickListener(view -> {
+                if(!smListnerRegistered) {
+                    smListnerRegistered = sensorManager.registerListener(this, accelerometer,
+                            SensorManager.SENSOR_DELAY_NORMAL);
+                }
+            });
+            accStop = findViewById(R.id.btnStopAcc);
+            accStop.setOnClickListener(view -> {
+                sensorManager.unregisterListener(this);
+                smListnerRegistered = false;
+            });
+        }
 
         recorder = new MediaRecorder();
         // Specify the audio source (microphone)
@@ -174,7 +180,10 @@ public class MainActivity extends AppCompatActivity  implements SensorEventListe
     @Override
     protected void onPause() {
         super.onPause();
-        sensorManager.unregisterListener(this);
+        if(sensorManager != null && smListnerRegistered) {
+            sensorManager.unregisterListener(this);
+            smListnerRegistered = false;
+        }
     }
 
     @Override
