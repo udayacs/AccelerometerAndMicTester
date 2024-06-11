@@ -1,5 +1,7 @@
 package com.zebra.cpg.myaccelerometer;
 
+import static android.Manifest.permission.READ_MEDIA_AUDIO;
+
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -7,6 +9,7 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
+import android.os.Build;
 import android.os.Bundle;
 import android.content.Context;
 import android.hardware.Sensor;
@@ -56,10 +59,10 @@ public class MainActivity extends AppCompatActivity  implements SensorEventListe
     private void resumeOnCreate(){
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        note("All permission granted.", false);
 
         if(accelerometer == null){
-            //finish();
-            Toast.makeText(this, "Accelerometer is null", Toast.LENGTH_LONG).show();
+            note("Accelerometer is null.", false);
         }
         else {
             tvx = findViewById(R.id.tvx);
@@ -69,12 +72,19 @@ public class MainActivity extends AppCompatActivity  implements SensorEventListe
                 if(!smListnerRegistered) {
                     smListnerRegistered = sensorManager.registerListener(this, accelerometer,
                             SensorManager.SENSOR_DELAY_NORMAL);
+                    if(smListnerRegistered){
+                        note("Accelerometer started.", false);
+                    }
+                    else {
+                        note("Accelerometer not started.", true);
+                    }
                 }
             });
             accStop = findViewById(R.id.btnStopAcc);
             accStop.setOnClickListener(view -> {
                 sensorManager.unregisterListener(this);
                 smListnerRegistered = false;
+                note("Accelerometer stopped.", false);
             });
         }
 
@@ -95,6 +105,7 @@ public class MainActivity extends AppCompatActivity  implements SensorEventListe
             try {
                 recorder.prepare();
                 recorder.start();
+                note("Recording started.", false);
             } catch (Exception e) {
                 Log.e(TAG, Objects.requireNonNull(e.getMessage()));
             }
@@ -106,6 +117,7 @@ public class MainActivity extends AppCompatActivity  implements SensorEventListe
             try {
                 recorder.stop();
                 recorder.release();
+                note("Recording stopped.", false);
             } catch (Exception e) {
                 Log.e(TAG, Objects.requireNonNull(e.getMessage()));
             }
@@ -119,8 +131,10 @@ public class MainActivity extends AppCompatActivity  implements SensorEventListe
                 player.setDataSource(filename);
                 player.prepare();
                 player.start();
+                note("Playback started.", false);
                 player.setOnCompletionListener(mediaPlayer -> {
                     player.release();
+                    note("Playback stopped.", false);
                 });
             } catch (Exception e) {
                 Log.e(TAG, Objects.requireNonNull(e.getMessage()));
@@ -140,6 +154,10 @@ public class MainActivity extends AppCompatActivity  implements SensorEventListe
             }
             for (String requestedPermission : requestedPermissions) {
                 if (checkSelfPermission(requestedPermission) == PackageManager.PERMISSION_DENIED) {
+                    if(requestedPermission.equals(READ_MEDIA_AUDIO) && Build.VERSION_CODES.TIRAMISU > Build.VERSION.SDK_INT) {
+                        Log.d(TAG, "permissions: " + requestedPermission + " : not related");
+                        continue;
+                    }
                     neededPermissions.add(requestedPermission);
                     Log.d(TAG, "permissions: " + requestedPermission + " : denied");
                 } else {
@@ -173,7 +191,7 @@ public class MainActivity extends AppCompatActivity  implements SensorEventListe
             resumeOnCreate();
         }
         else {
-            Toast.makeText(this, "All permission not granted. App will not work", Toast.LENGTH_LONG).show();
+            note("All permission not granted. App will not work", true);
         }
     }
 
@@ -183,6 +201,7 @@ public class MainActivity extends AppCompatActivity  implements SensorEventListe
         if(sensorManager != null && smListnerRegistered) {
             sensorManager.unregisterListener(this);
             smListnerRegistered = false;
+            note("Stopping Accelerometer", false);
         }
     }
 
@@ -207,5 +226,15 @@ public class MainActivity extends AppCompatActivity  implements SensorEventListe
     @Override
     public void onAccuracyChanged(Sensor sensor, int i) {
 
+    }
+
+    private void note(String msg, boolean isError){
+        if(isError){
+            Log.e(TAG, msg);
+        }
+        else {
+            Log.d(TAG, msg);
+        }
+        Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
     }
 }
